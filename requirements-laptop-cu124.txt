@@ -1,8 +1,8 @@
-# PyTorch CUDA 12.8 wheels
---extra-index-url https://download.pytorch.org/whl/cu128
+# PyTorch CUDA 12.4 wheels
+--extra-index-url https://download.pytorch.org/whl/cu124
 
-torch==2.11.0+cu128
-torchvision==0.26.0+cu128
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
 triton-windows==3.2.0.post21
 
 # Hugging Face / Transformers
@@ -36,7 +36,7 @@ tqdm==4.67.3
 psutil==7.2.2
 PyYAML==6.0.3
 Jinja2==3.1.6
-sympy==1.14.0
+sympy==1.13.1
 networkx==3.6.1
 filelock==3.25.2
 fsspec==2026.2.0
