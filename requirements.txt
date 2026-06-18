@@ -1,0 +1,44 @@
+# PyTorch CUDA 12.4 wheels
+--extra-index-url https://download.pytorch.org/whl/cu124
+
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+triton-windows==3.2.0.post21
+
+# Hugging Face / Transformers
+transformers==5.0.0rc0
+accelerate==1.13.0
+safetensors==0.7.0
+tokenizers==0.22.2
+huggingface_hub==1.14.0
+hf-xet==1.5.0
+
+# Mistral
+mistral_common==1.11.2
+
+# Kaggle
+kagglehub==1.0.1
+kagglesdk==0.1.23
+
+# Quantization
+bitsandbytes==0.49.2
+
+# Core dependencies
+numpy==2.3.5
+pillow==12.2.0
+pydantic==2.13.4
+pydantic-extra-types==2.11.1
+protobuf==7.34.1
+tiktoken==0.12.0
+regex==2026.4.4
+requests==2.33.1
+tqdm==4.67.3
+psutil==7.2.2
+PyYAML==6.0.3
+Jinja2==3.1.6
+sympy==1.13.1
+networkx==3.6.1
+filelock==3.25.2
+fsspec==2026.2.0
+packaging==26.2
+setuptools==70.2.0
