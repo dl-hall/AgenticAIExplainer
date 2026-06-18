@@ -72,12 +72,23 @@
             addContextBlock("Full Prompt (raw tokens)", promptText, "system", true);
         }
 
+        let toolsRendered = false;
+
         for (const msg of messages) {
             const role = msg.role;
             const contentText = extractText(msg.content);
 
             if (role === "system") {
                 addContextBlock("System Prompt", contentText, "system");
+                if (!toolsRendered && tools && tools.length > 0) {
+                    const toolText = JSON.stringify(tools, null, 2);
+                    addContextBlock(
+                        `Tool Definitions (${tools.length} tools)`,
+                        toolText,
+                        "tools"
+                    );
+                    toolsRendered = true;
+                }
             } else if (role === "user") {
                 addContextBlock("User Message", contentText, "user");
             } else if (role === "assistant") {
@@ -104,15 +115,6 @@
                     "tool-result"
                 );
             }
-        }
-
-        if (tools && tools.length > 0) {
-            const toolText = JSON.stringify(tools, null, 2);
-            addContextBlock(
-                `Tool Definitions (${tools.length} tools)`,
-                toolText,
-                "tools"
-            );
         }
 
         const charCount = promptText ? promptText.length : 0;

@@ -26,6 +26,37 @@ A visual demonstration app that explains how agentic AI works to non-expert audi
 - No npm/node dependencies. Frontend is static files served by FastAPI.
 - VRAM budget: ~6GB for model at bfloat16, leaving headroom on the 12GB laptop GPU.
 
+## File structure
+
+```
+app/
+  main.py           # FastAPI app, WebSocket endpoint, serves static files
+  agent.py          # Agent loop, event emission, tool call parsing
+  tools.py          # Tool definitions (calculator, read_file, list_files) and execution
+  model_manager.py  # Model loading/switching, tokenization, streaming generation
+static/
+  index.html        # Dashboard layout (two-panel: context window + agent activity)
+  style.css         # Dark theme, color-coded roles, CSS grid layout
+  app.js            # WebSocket client, UI rendering, event handling
+demo_data/          # .txt files the agent can read (program_info, team_roster, project_status)
+```
+
+## Running
+
+```
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Do NOT use `--reload` — it spawns a child process that conflicts with CUDA model loading.
+
+## Mistral-specific details
+
+- Chat template uses special tokens: `[SYSTEM_PROMPT]`, `[AVAILABLE_TOOLS]`, `[INST]`, `[TOOL_CALLS]`, `[ARGS]`, `[TOOL_RESULTS]`
+- Tool call output format: `[TOOL_CALLS]function_name[ARGS]{"key": "value"}</s>`
+- `tool_call_id` must be exactly 9 alphanumeric characters (a-z, A-Z, 0-9)
+- `apply_chat_template` with `return_dist=True` is NOT compatible when `tools=` is provided — only pass one or the other
+- `</s>` is the EOS token; `<s>` is BOS (prepended to prompt by the template)
+
 ## Dependencies
 
 - `requirements.txt` — primary, uses cu128 (works on both RTX 5090 and RTX 3500 Ada)
