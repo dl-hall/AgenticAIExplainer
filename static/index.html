@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic AI Explainer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <header id="controls">
+            <div class="control-group">
+                <label>Model:</label>
+                <select id="model-select">
+                    <option value="instruct">Instruct (no thinking)</option>
+                    <option value="reasoning">Reasoning (with thinking)</option>
+                </select>
+                <button id="btn-load-model" class="btn btn-primary">Load Model</button>
+                <span id="model-status" class="status-badge">No model loaded</span>
+            </div>
+            <div class="control-group">
+                <label>Preset:</label>
+                <select id="preset-select">
+                    <option value="">-- Custom prompt --</option>
+                    <option value="What is 42 * 17?">Calculator: "What is 42 * 17?"</option>
+                    <option value="What is the name of the source program SE?">File lookup: "What is the name of the source program SE?"</option>
+                    <option value="How many people are on the engineering team, and what is 100 divided by that number?">Multi-tool: Team size + calculation</option>
+                </select>
+            </div>
+            <div class="control-group input-group">
+                <input type="text" id="prompt-input" placeholder="Type a prompt or select a preset..." />
+                <button id="btn-send" class="btn btn-primary" disabled>Send</button>
+                <button id="btn-reset" class="btn btn-secondary">Reset</button>
+            </div>
+        </header>
+
+        <main id="panels">
+            <section id="context-panel">
+                <div class="panel-header">
+                    <h2>Context Window</h2>
+                    <span id="token-count" class="badge">0 tokens</span>
+                </div>
+                <div id="context-content" class="panel-body">
+                    <div class="empty-state">Send a prompt to see the context window build up.</div>
+                </div>
+            </section>
+
+            <section id="activity-panel">
+                <div class="panel-header">
+                    <h2>Agent Activity</h2>
+                    <span id="loop-counter" class="badge" style="display:none">Iteration 0</span>
+                </div>
+                <div id="activity-content" class="panel-body">
+                    <div id="loop-diagram">
+                        <div class="loop-step" id="step-observe" data-label="Receive Input">
+                            <div class="step-icon">1</div>
+                            <div class="step-text">Receive<br>Input</div>
+                        </div>
+                        <div class="loop-arrow">&rarr;</div>
+                        <div class="loop-step" id="step-think" data-label="LLM Thinks">
+                            <div class="step-icon">2</div>
+                            <div class="step-text">LLM<br>Generates</div>
+                        </div>
+                        <div class="loop-arrow">&rarr;</div>
+                        <div class="loop-step" id="step-act" data-label="Act">
+                            <div class="step-icon">3</div>
+                            <div class="step-text">Tool Call<br>or Reply</div>
+                        </div>
+                        <div class="loop-arrow loop-back">&hookleftarrow;</div>
+                    </div>
+                    <div id="activity-log">
+                        <div class="empty-state">The agent loop will appear here as events unfold.</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer id="status-bar">
+            <span id="status-icon">&#9679;</span>
+            <span id="status-text">Ready. Load a model and send a prompt to begin.</span>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

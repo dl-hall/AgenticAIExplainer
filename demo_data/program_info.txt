@@ -1,0 +1,16 @@
+Source Program SE Information
+=============================
+
+The source program SE is called "Meridian".
+
+Meridian is a data integration platform used for consolidating telemetry
+from multiple satellite ground stations. It was originally developed in
+2019 by the Systems Engineering division and has been in continuous
+operation since early 2020.
+
+Key facts:
+- Primary language: Python 3.11
+- Database backend: PostgreSQL 15
+- Current version: 4.2.1
+- Lead maintainer: Dr. Sarah Chen
+- Deployment: On-premises at three regional data centers

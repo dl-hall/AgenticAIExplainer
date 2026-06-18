@@ -11,7 +11,7 @@ if not torch.cuda.is_available():
 print(torch.cuda.get_device_name(0))
 
 model_id = kagglehub.model_download(
-    "mistral-ai/ministral-3/Transformers/ministral-3-3b-instruct-2512"
+    "mistral-ai/ministral-3/Transformers/ministral-3-3b-reasoning-2512"
 )
 
 tokenizer = MistralCommonBackend.from_pretrained(model_id)

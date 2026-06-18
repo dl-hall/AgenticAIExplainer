@@ -1,0 +1,10 @@
+Engineering Team Roster
+======================
+
+Team Lead: Marcus Webb
+Senior Engineers: Sarah Chen, James Okafor, Priya Sharma
+Junior Engineers: Alex Novak, Lily Torres
+QA Lead: David Kim
+
+Total team size: 7 members
+Last updated: June 2026
