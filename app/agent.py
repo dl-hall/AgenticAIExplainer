@@ -5,7 +5,7 @@ import string
 from dataclasses import dataclass, field
 
 from app.model_manager import ModelManager, MAX_CONTEXT, NATIVE_CONTEXT
-from app.tools import TOOL_DEFINITIONS, execute_tool
+from app.tools import TOOL_DEFINITIONS, execute_tool, tool_names
 
 SYSTEM_PROMPT = """You are a helpful assistant. You have access to tools that let you perform calculations, read files, and list available files. Use these tools when needed to answer the user's questions accurately.
 
@@ -54,8 +54,9 @@ class Agent:
     def __init__(self, model_manager: ModelManager):
         self.model_manager = model_manager
         self.messages = []
-        self.tools_enabled = True
-        self.list_files_enabled = True
+        # Per-tool enabled set, keyed by the names in TOOL_DEFINITIONS. All on
+        # by default; the presenter toggles individual tools from the UI.
+        self.enabled_tools = set(tool_names())
         self.system_prompt = SYSTEM_PROMPT
         self.temperature = DEFAULT_TEMPERATURES["instruct"]
         self.reasoning_addendum_enabled = False
@@ -75,12 +76,10 @@ class Agent:
         return self.temperature, self.reasoning_addendum_enabled
 
     def get_active_tools(self):
-        if not self.tools_enabled:
-            return []
-        tools = [t for t in TOOL_DEFINITIONS]
-        if not self.list_files_enabled:
-            tools = [t for t in tools if t["function"]["name"] != "list_files"]
-        return tools
+        """Filter TOOL_DEFINITIONS down to the per-tool enabled set. An empty
+        set returns [], which the tokenize path treats as 'no tools'."""
+        return [t for t in TOOL_DEFINITIONS
+                if t["function"]["name"] in self.enabled_tools]
 
     def _build_messages(self):
         """Build (model_input_messages, display_messages, addendum).

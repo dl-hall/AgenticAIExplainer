@@ -196,6 +196,27 @@ select {
     cursor: pointer;
 }
 
+.tool-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+}
+
+.tool-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--role-tools);
+    cursor: pointer;
+    user-select: none;
+}
+
+.tool-toggle input[type="checkbox"] {
+    accent-color: var(--role-tools);
+    cursor: pointer;
+}
+
 /* --- Panels --- */
 
 #panels {

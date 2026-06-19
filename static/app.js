@@ -17,6 +17,7 @@
     const temperatureEl = $("#temperature");
     const temperatureValueEl = $("#temperature-value");
     const maxIterationsEl = $("#max-iterations");
+    const toolToggles = $("#tool-toggles");
     const tokenCount = $("#token-count");
     const loopCounter = $("#loop-counter");
     const statusIcon = $("#status-icon");
@@ -30,7 +31,10 @@
         const protocol = location.protocol === "https:" ? "wss:" : "ws:";
         ws = new WebSocket(`${protocol}//${location.host}/ws`);
 
-        ws.onopen = () => setStatus("active", "Connected to server.");
+        ws.onopen = () => {
+            setStatus("active", "Connected to server.");
+            send({ action: "get_tools" });
+        };
         ws.onclose = () => {
             setStatus("error", "Disconnected. Refresh to reconnect.");
             modelLoaded = false;
@@ -211,6 +215,41 @@
         streamingEl = null;
     }
 
+    // --- Tool toggles ---
+
+    function toolLabel(name) {
+        return name
+            .split("_")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+    }
+
+    function renderToolToggles(allTools, enabledTools) {
+        const enabled = new Set(enabledTools || []);
+        toolToggles.innerHTML = "";
+        for (const name of allTools || []) {
+            const label = document.createElement("label");
+            label.className = "tool-toggle";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = name;
+            checkbox.checked = enabled.has(name);
+            checkbox.addEventListener("change", () => {
+                const selected = Array.from(
+                    toolToggles.querySelectorAll("input[type=checkbox]")
+                )
+                    .filter((c) => c.checked)
+                    .map((c) => c.value);
+                send({ action: "set_tools", enabled_tools: selected });
+            });
+
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(" " + toolLabel(name)));
+            toolToggles.appendChild(label);
+        }
+    }
+
     // --- Event handler ---
 
     function handleEvent(evt) {
@@ -356,6 +395,14 @@
 
             case "max_iterations_updated":
                 setStatus("active", `Iteration limit set to ${evt.max_iterations}.`);
+                break;
+
+            case "tools_updated":
+                renderToolToggles(evt.all_tools, evt.enabled_tools);
+                setStatus(
+                    "active",
+                    `Tools updated — ${(evt.enabled_tools || []).length} of ${(evt.all_tools || []).length} enabled (next prompt).`
+                );
                 break;
 
             case "reset":

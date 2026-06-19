@@ -43,8 +43,14 @@ demo_data/          # .txt files the agent can read (program_info, team_roster, 
 
 ## Running
 
+Always use the workspace virtualenv at `.venv` — `torch`/`transformers` and the
+other deps are installed there, NOT in system Python. On Windows the interpreter
+is `.\.venv\Scripts\python.exe` (use it directly rather than relying on shell
+activation):
+
 ```
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+.\.venv\Scripts\python.exe -m pytest tests/
 ```
 
 Do NOT use `--reload` — it spawns a child process that conflicts with CUDA model loading.
@@ -54,7 +60,7 @@ Do NOT use `--reload` — it spawns a child process that conflicts with CUDA mod
 - Chat template uses special tokens: `[SYSTEM_PROMPT]`, `[AVAILABLE_TOOLS]`, `[INST]`, `[TOOL_CALLS]`, `[ARGS]`, `[TOOL_RESULTS]`
 - Tool call output format: `[TOOL_CALLS]function_name[ARGS]{"key": "value"}</s>`
 - `tool_call_id` must be exactly 9 alphanumeric characters (a-z, A-Z, 0-9)
-- `apply_chat_template` with `return_dist=True` is NOT compatible when `tools=` is provided — only pass one or the other
+- `MistralCommonBackend.apply_chat_template` does NOT accept a dict-return kwarg (no `return_dict`/`return_dist`). When tools are present, pass `tools=`; when there are none, pass neither — a bare tensor result is wrapped into `{"input_ids": ...}` in `model_manager.tokenize`, which is all `generate()` needs.
 - `</s>` is the EOS token; `<s>` is BOS (prepended to prompt by the template)
 
 ## Dependencies

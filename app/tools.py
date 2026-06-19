@@ -53,6 +53,12 @@ TOOL_DEFINITIONS = [
     },
 ]
 
+def tool_names():
+    """Return the list of tool names defined in TOOL_DEFINITIONS, in order.
+    Single source of truth for which per-tool toggles exist."""
+    return [t["function"]["name"] for t in TOOL_DEFINITIONS]
+
+
 ALLOWED_OPS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,

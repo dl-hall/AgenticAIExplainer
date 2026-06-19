@@ -70,11 +70,14 @@ class ModelManager:
                 on_progress(f"Model '{model_key}' ready.")
 
     def tokenize(self, messages, tools=None):
+        # Only pass `tools=` when there are tools to advertise. An empty/none
+        # tool set (e.g. all tools toggled off, or the forced final answer) must
+        # NOT pass the dict-return kwarg — it isn't supported by
+        # MistralCommonBackend.apply_chat_template. A bare tensor result is
+        # wrapped into a dict below, which is all generate() needs.
         kwargs = {"return_tensors": "pt"}
         if tools:
             kwargs["tools"] = tools
-        else:
-            kwargs["return_dist"] = True
 
         tokenized = self.tokenizer.apply_chat_template(messages, **kwargs)
         if isinstance(tokenized, torch.Tensor):

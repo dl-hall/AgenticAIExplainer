@@ -7,6 +7,7 @@ import os
 
 from app.model_manager import ModelManager
 from app.agent import Agent, AgentEvent
+from app.tools import tool_names
 
 app = FastAPI()
 
@@ -75,11 +76,19 @@ async def websocket_endpoint(ws: WebSocket):
                 await emit(AgentEvent("reset", {}))
 
             elif action == "set_tools":
-                agent.tools_enabled = msg.get("tools_enabled", True)
-                agent.list_files_enabled = msg.get("list_files_enabled", True)
+                # Intersect with known names so a bad payload can't inject
+                # unknown tools. Takes effect on the next prompt.
+                requested = msg.get("enabled_tools", tool_names())
+                agent.enabled_tools = set(requested) & set(tool_names())
                 await emit(AgentEvent("tools_updated", {
-                    "tools_enabled": agent.tools_enabled,
-                    "list_files_enabled": agent.list_files_enabled,
+                    "enabled_tools": sorted(agent.enabled_tools),
+                    "all_tools": tool_names(),
+                }))
+
+            elif action == "get_tools":
+                await emit(AgentEvent("tools_updated", {
+                    "enabled_tools": sorted(agent.enabled_tools),
+                    "all_tools": tool_names(),
                 }))
 
             elif action == "set_system_prompt":
