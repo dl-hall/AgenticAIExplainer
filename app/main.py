@@ -14,6 +14,18 @@ app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
+# Origins the served page reports now that we bind to loopback on port 8000.
+# A browser-based Cross-Site WebSocket Hijacking attempt arrives with the
+# attacker's Origin, which won't be in this set and is rejected before accept().
+# NOTE: tied to host/port below — update this if the demo's port changes.
+ALLOWED_ORIGINS = {"http://localhost:8000", "http://127.0.0.1:8000"}
+
+# Generous upper bounds to keep a misbehaving/malicious client from driving the
+# agent into a very long loop or feeding a pathologically large prompt. Normal
+# demo usage stays well under these.
+MAX_ITERATIONS_CAP = 20
+MAX_PROMPT_CHARS = 10000
+
 model_manager = ModelManager()
 agent = Agent(model_manager)
 
@@ -27,6 +39,15 @@ async def root():
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
+    # Reject browser-originated cross-site connections before accepting. A
+    # missing Origin (non-browser clients: CLI tools, tests) is allowed —
+    # browsers always send Origin on WebSocket handshakes, so this does not
+    # weaken the protection against a malicious web page.
+    origin = ws.headers.get("origin")
+    if origin is not None and origin not in ALLOWED_ORIGINS:
+        await ws.close(code=1008)  # policy violation
+        return
+
     await ws.accept()
 
     async def emit(event: AgentEvent):
@@ -35,7 +56,12 @@ async def websocket_endpoint(ws: WebSocket):
     try:
         while True:
             raw = await ws.receive_text()
-            msg = json.loads(raw)
+            try:
+                msg = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                # A malformed/non-JSON frame must not tear down the session.
+                await emit(AgentEvent("error", {"text": "Invalid message: expected JSON."}))
+                continue
             action = msg.get("action")
 
             if action == "load_model":
@@ -62,6 +88,11 @@ async def websocket_endpoint(ws: WebSocket):
             elif action == "send_prompt":
                 prompt = msg.get("prompt", "")
                 if not prompt.strip():
+                    continue
+                if len(prompt) > MAX_PROMPT_CHARS:
+                    await emit(AgentEvent("error", {
+                        "text": f"Prompt too long (max {MAX_PROMPT_CHARS} characters).",
+                    }))
                     continue
                 if model_manager.model is None:
                     await emit(AgentEvent("error", {"text": "No model loaded. Load a model first."}))
@@ -110,7 +141,10 @@ async def websocket_endpoint(ws: WebSocket):
                 }))
 
             elif action == "set_max_iterations":
-                agent.max_iterations = max(1, int(msg.get("max_iterations", agent.max_iterations)))
+                agent.max_iterations = min(
+                    MAX_ITERATIONS_CAP,
+                    max(1, int(msg.get("max_iterations", agent.max_iterations))),
+                )
                 await emit(AgentEvent("max_iterations_updated", {
                     "max_iterations": agent.max_iterations,
                 }))
@@ -121,4 +155,4 @@ async def websocket_endpoint(ws: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=False)

@@ -59,13 +59,18 @@ def tool_names():
     return [t["function"]["name"] for t in TOOL_DEFINITIONS]
 
 
+# Exponentiation (ast.Pow) and modulo (ast.Mod) are deliberately excluded:
+# neither is advertised in the calculator's description (only + - * / and
+# parentheses), and Pow is a denial-of-service vector — a model-emitted
+# expression like `9**9**9` would spin a CPU and exhaust memory building a
+# gigantic integer. Any operator not listed here falls through to the
+# "Unsupported expression element" error in _safe_eval, which calculator()
+# catches and returns as a harmless "Error: ..." string.
 ALLOWED_OPS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
     ast.Div: operator.truediv,
-    ast.Mod: operator.mod,
-    ast.Pow: operator.pow,
     ast.USub: operator.neg,
     ast.UAdd: operator.pos,
 }
@@ -96,13 +101,36 @@ def calculator(expression: str) -> str:
         return f"Error: {e}"
 
 
+# Largest file read_file will return, in bytes. demo_data/ is curated, so this
+# is just a guard against a pathological file being slurped into memory.
+MAX_READ_BYTES = 1024 * 1024
+
+
 def read_file(filename: str) -> str:
+    # basename strips any directory components (../, absolute paths) — the first
+    # line of defense against traversal.
     safe_name = os.path.basename(filename)
-    filepath = os.path.join(DEMO_DATA_DIR, safe_name)
-    if not os.path.isfile(filepath):
+
+    # Only serve .txt files, matching what list_files advertises.
+    if not safe_name.lower().endswith(".txt"):
         return f"Error: File '{safe_name}' not found in data directory."
-    with open(filepath, "r", encoding="utf-8") as f:
-        return f.read()
+
+    filepath = os.path.join(DEMO_DATA_DIR, safe_name)
+
+    # Defense-in-depth: resolve symlinks and confirm the real path is still
+    # inside DEMO_DATA_DIR. Guards against a symlink planted in demo_data/.
+    base = os.path.realpath(DEMO_DATA_DIR)
+    real = os.path.realpath(filepath)
+    try:
+        contained = os.path.commonpath([real, base]) == base
+    except ValueError:
+        # Different drives (Windows) -> not contained.
+        contained = False
+    if not contained or not os.path.isfile(real):
+        return f"Error: File '{safe_name}' not found in data directory."
+
+    with open(real, "r", encoding="utf-8") as f:
+        return f.read(MAX_READ_BYTES)
 
 
 def list_files() -> str:
