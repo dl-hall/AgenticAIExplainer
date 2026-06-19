@@ -19,13 +19,20 @@
     const maxIterationsEl = $("#max-iterations");
     const toolToggles = $("#tool-toggles");
     const tokenCount = $("#token-count");
+    const gaugeFill = $("#context-gauge-fill");
+    const gaugeLabel = $("#context-gauge-label");
     const loopCounter = $("#loop-counter");
     const statusIcon = $("#status-icon");
     const statusText = $("#status-text");
+    const detailLevelEl = $("#detail-level");
+    const appEl = $("#app");
 
     let ws = null;
     let modelLoaded = false;
     let streamingEl = null;
+
+    // Context-usage gauge references: 16k native train window, 256k YaRN max.
+    const NATIVE_WINDOW = 16384;
 
     function connect() {
         const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -136,6 +143,7 @@
 
         const realCount = typeof count === "number" ? count : 0;
         tokenCount.textContent = `${realCount.toLocaleString()} tokens`;
+        updateGauge(realCount);
 
         contextContent.scrollTop = contextContent.scrollHeight;
     }
@@ -164,6 +172,19 @@
         block.appendChild(header);
         block.appendChild(body);
         contextContent.appendChild(block);
+    }
+
+    function updateGauge(count) {
+        const pct = Math.min(100, (count / NATIVE_WINDOW) * 100);
+        gaugeFill.style.width = pct + "%";
+        gaugeFill.className =
+            "context-gauge-fill" +
+            (count > NATIVE_WINDOW
+                ? " over"
+                : count > NATIVE_WINDOW * 0.8
+                ? " warn"
+                : "");
+        gaugeLabel.textContent = `${count.toLocaleString()} / ${NATIVE_WINDOW.toLocaleString()} tokens · 256k max`;
     }
 
     function extractText(content) {
@@ -320,8 +341,8 @@
             case "thinking_block":
                 addActivity(
                     `<div class="label" style="color:var(--role-thinking)">🧠 Thinking Block</div>
-                     <div>The reasoning model generated internal thinking before responding. This text is not shown to the user in a real app — it's the model "talking to itself" to break down the problem.</div>
-                     <pre style="margin-top:6px;color:var(--role-thinking);opacity:0.8;font-size:12px">${escapeHtml(evt.text)}</pre>`,
+                     <div class="teaching">The reasoning model generated internal thinking before responding. This text is not shown to the user in a real app — it's the model "talking to itself" to break down the problem.</div>
+                     <pre class="content" style="margin-top:6px;color:var(--role-thinking);opacity:0.8;font-size:12px">${escapeHtml(evt.text)}</pre>`,
                     "thinking"
                 );
                 break;
@@ -330,8 +351,8 @@
                 for (const tc of evt.calls) {
                     addActivity(
                         `<div class="label" style="color:var(--role-tool-call)">🔧 Tool Call Detected</div>
-                         <div>The LLM generated text that the harness recognized as a tool call. The LLM did not execute anything — it just "spoke" a structured request. The harness will now execute it.</div>
-                         <div style="margin-top:4px"><strong>${escapeHtml(tc.name)}</strong>(${escapeHtml(JSON.stringify(tc.arguments))})</div>`,
+                         <div class="teaching">The LLM generated text that the harness recognized as a tool call. The LLM did not execute anything — it just "spoke" a structured request. The harness will now execute it.</div>
+                         <div class="content" style="margin-top:4px"><strong>${escapeHtml(tc.name)}</strong>(${escapeHtml(JSON.stringify(tc.arguments))})</div>`,
                         "tool-call"
                     );
                 }
@@ -351,8 +372,8 @@
             case "tool_result":
                 addActivity(
                     `<div class="label" style="color:var(--role-tool-result)">✅ Tool Result</div>
-                     <div>The harness executed <strong>${escapeHtml(evt.name)}</strong> and got a result. This result is now injected back into the context as a new message, and the agent loop continues.</div>
-                     <pre style="margin-top:6px;font-size:12px">${escapeHtml(evt.result)}</pre>`,
+                     <div class="teaching">The harness executed <strong>${escapeHtml(evt.name)}</strong> and got a result. This result is now injected back into the context as a new message, and the agent loop continues.</div>
+                     <pre class="content" style="margin-top:6px;font-size:12px">${escapeHtml(evt.result)}</pre>`,
                     "tool-result"
                 );
                 setStatus(
@@ -363,12 +384,12 @@
 
             case "response_complete": {
                 const cappedNote = evt.capped
-                    ? `<div style="margin-top:4px;color:var(--accent)">(Best-effort answer, produced after the iteration cap was reached with tools disabled.)</div>`
+                    ? `<div class="teaching" style="margin-top:4px;color:var(--accent)">(Best-effort answer, produced after the iteration cap was reached with tools disabled.)</div>`
                     : "";
                 addActivity(
                     `<div class="label" style="color:var(--role-assistant)">💬 Final Response</div>
-                     <div>The LLM generated a text response (not a tool call), so the agent loop ends. This is what the user would see.</div>
-                     <pre style="margin-top:6px;font-size:13px;color:var(--text)">${escapeHtml(evt.text)}</pre>${cappedNote}`,
+                     <div class="teaching">The LLM generated a text response (not a tool call), so the agent loop ends. This is what the user would see.</div>
+                     <pre class="content" style="margin-top:6px;font-size:13px;color:var(--text)">${escapeHtml(evt.text)}</pre>${cappedNote}`,
                     "response"
                 );
                 setLoopStep(null);
@@ -412,6 +433,7 @@
                     '<div class="empty-state">The agent loop will appear here as events unfold.</div>';
                 loopCounter.style.display = "none";
                 tokenCount.textContent = "0 tokens";
+                updateGauge(0);
                 setLoopStep(null);
                 setStatus("active", "Conversation reset.");
                 break;
@@ -461,6 +483,13 @@
 
         activityLog.querySelector(".empty-state")?.remove();
 
+        addActivity(
+            `<div class="label" style="color:var(--role-user)">🧑 User Message</div>
+             <div class="teaching">The user's prompt — the input that starts the agent loop.</div>
+             <div class="content">${escapeHtml(prompt)}</div>`,
+            "user-message"
+        );
+
         send({ action: "send_prompt", prompt });
         promptInput.value = "";
         presetSelect.value = "";
@@ -494,6 +523,19 @@
         send({ action: "set_max_iterations", max_iterations: n });
     });
 
+    // --- Detail level (progressive disclosure, frontend-only) ---
+
+    function applyDetailLevel(level) {
+        appEl.classList.remove("detail-1", "detail-2", "detail-3", "detail-4");
+        appEl.classList.add(`detail-${level}`);
+    }
+
+    detailLevelEl.addEventListener("change", () => {
+        applyDetailLevel(detailLevelEl.value);
+    });
+
     // --- Init ---
+    detailLevelEl.value = "1";
+    applyDetailLevel("1");
     connect();
 })();

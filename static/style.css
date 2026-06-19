@@ -570,3 +570,68 @@ section {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
 }
+
+/* --- Context-usage gauge --- */
+
+.context-gauge {
+    padding: 6px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.context-gauge-fill {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--accent-green);
+    width: 0;
+    transition: width 0.3s, background 0.3s;
+}
+
+.context-gauge-fill.warn { background: var(--accent-yellow); }
+.context-gauge-fill.over { background: var(--accent); }
+
+.context-gauge-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* --- Progressive disclosure (detail levels) ---
+   Driven entirely by a class on #app. No class / .detail-4 == full detail. */
+
+/* Teaching prose: only at Level 4 */
+#app:not(.detail-4) .activity-entry .teaching { display: none; }
+
+/* Phase-label narration entries (loop iteration / context built / cap note):
+   only at Level 4 */
+#app:not(.detail-4) .activity-entry.phase-label { display: none; }
+
+/* Level 1 — chat only: hide all machinery entries, keep user + response
+   (errors stay visible at every level) */
+#app.detail-1 .activity-entry.streaming,
+#app.detail-1 .activity-entry.thinking,
+#app.detail-1 .activity-entry.tool-call,
+#app.detail-1 .activity-entry.tool-result { display: none; }
+
+/* Level 1 — strip entry chrome for a clean chat look */
+#app.detail-1 .activity-entry .label { display: none; }
+#app.detail-1 #loop-diagram { display: none; }
+#app.detail-1 #loop-counter { display: none !important; } /* beats JS inline style */
+
+/* Levels 1 & 2 — hide context panel, activity panel reflows to full width */
+#app.detail-1 #panels,
+#app.detail-2 #panels { grid-template-columns: 1fr; }
+#app.detail-1 #context-panel,
+#app.detail-2 #context-panel { display: none; }
+
+/* Level 1 — user + response read as a conversation */
+#app.detail-1 .activity-entry.user-message,
+#app.detail-1 .activity-entry.response {
+    border-left: none;
+    background: none;
+}
+#app.detail-1 .activity-entry.user-message .content {
+    background: rgba(34, 197, 94, 0.12);
+    border-radius: 8px;
+    padding: 8px 12px;
+}

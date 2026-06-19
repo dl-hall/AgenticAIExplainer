@@ -27,6 +27,15 @@
                     <option value="How many people are on the engineering team, and what is 100 divided by that number?">Multi-tool: Team size + calculation</option>
                 </select>
             </div>
+            <div class="control-group">
+                <label for="detail-level">Detail:</label>
+                <select id="detail-level">
+                    <option value="1">1 · Just the answer</option>
+                    <option value="2">2 · + Tool calls</option>
+                    <option value="3">3 · + Context window</option>
+                    <option value="4">4 · Everything</option>
+                </select>
+            </div>
             <div class="control-group input-group">
                 <input type="text" id="prompt-input" placeholder="Type a prompt or select a preset..." />
                 <button id="btn-send" class="btn btn-primary" disabled>Send</button>
@@ -72,6 +81,10 @@ When you need information that might be in a file, first list the available file
                 <div class="panel-header">
                     <h2>Context Window</h2>
                     <span id="token-count" class="badge">0 tokens</span>
+                </div>
+                <div id="context-gauge" class="context-gauge">
+                    <div id="context-gauge-fill" class="context-gauge-fill"></div>
+                    <div id="context-gauge-label" class="context-gauge-label">0 / 16,384 tokens · 256k max</div>
                 </div>
                 <div id="context-content" class="panel-body">
                     <div class="empty-state">Send a prompt to see the context window build up.</div>
