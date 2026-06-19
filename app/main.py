@@ -100,6 +100,12 @@ async def websocket_endpoint(ws: WebSocket):
                     "enabled": agent.reasoning_addendum_enabled,
                 }))
 
+            elif action == "set_max_iterations":
+                agent.max_iterations = max(1, int(msg.get("max_iterations", agent.max_iterations)))
+                await emit(AgentEvent("max_iterations_updated", {
+                    "max_iterations": agent.max_iterations,
+                }))
+
     except WebSocketDisconnect:
         pass
 

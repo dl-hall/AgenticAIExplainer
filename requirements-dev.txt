@@ -1,0 +1,7 @@
+# Dev-only dependencies (not needed to run the app).
+# Install into the SAME environment as requirements.txt (importing app.agent
+# pulls in app.model_manager -> torch, so tests need the app's venv):
+#   pip install -r requirements-dev.txt
+# Run tests with:
+#   python -m pytest tests/
+pytest>=8.0

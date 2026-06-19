@@ -16,6 +16,7 @@
     const reasoningToggle = $("#reasoning-addendum-toggle");
     const temperatureEl = $("#temperature");
     const temperatureValueEl = $("#temperature-value");
+    const maxIterationsEl = $("#max-iterations");
     const tokenCount = $("#token-count");
     const loopCounter = $("#loop-counter");
     const statusIcon = $("#status-icon");
@@ -321,25 +322,40 @@
                 );
                 break;
 
-            case "response_complete":
+            case "response_complete": {
+                const cappedNote = evt.capped
+                    ? `<div style="margin-top:4px;color:var(--accent)">(Best-effort answer, produced after the iteration cap was reached with tools disabled.)</div>`
+                    : "";
                 addActivity(
                     `<div class="label" style="color:var(--role-assistant)">💬 Final Response</div>
                      <div>The LLM generated a text response (not a tool call), so the agent loop ends. This is what the user would see.</div>
-                     <pre style="margin-top:6px;font-size:13px;color:var(--text)">${escapeHtml(evt.text)}</pre>`,
+                     <pre style="margin-top:6px;font-size:13px;color:var(--text)">${escapeHtml(evt.text)}</pre>${cappedNote}`,
                     "response"
                 );
                 setLoopStep(null);
-                setStatus("success", "Agent finished — response delivered.");
+                setStatus(
+                    "success",
+                    evt.capped
+                        ? "Agent finished — best-effort answer after cap."
+                        : "Agent finished — response delivered."
+                );
                 break;
+            }
 
             case "max_iterations":
+                // The agent now produces a forced best-effort answer instead of
+                // dead-ending, so this is an informational note, not an error.
+                // The loop stays "active"; the forthcoming response_complete ends it.
                 addActivity(
-                    `<div class="label" style="color:var(--accent)">Max Iterations Reached</div>
-                     <div>The agent hit the safety limit of ${evt.iterations} iterations.</div>`,
-                    "error"
+                    `<div class="label" style="color:var(--accent)">⚠️ Iteration Cap Reached</div>
+                     <div>The agent hit its safety limit of ${evt.iterations} iterations${evt.forcing_answer ? " — generating one final answer with tools disabled so you still get a result." : "."}</div>`,
+                    "phase-label"
                 );
-                setLoopStep(null);
-                setStatus("warning", "Agent stopped — max iterations.");
+                setStatus("warning", "Iteration cap reached — forcing a final answer...");
+                break;
+
+            case "max_iterations_updated":
+                setStatus("active", `Iteration limit set to ${evt.max_iterations}.`);
                 break;
 
             case "reset":
@@ -422,6 +438,13 @@
 
     reasoningToggle.addEventListener("change", () => {
         send({ action: "set_reasoning_addendum", enabled: reasoningToggle.checked });
+    });
+
+    maxIterationsEl.addEventListener("change", () => {
+        let n = parseInt(maxIterationsEl.value, 10);
+        if (!Number.isFinite(n) || n < 1) n = 1;
+        maxIterationsEl.value = n;
+        send({ action: "set_max_iterations", max_iterations: n });
     });
 
     // --- Init ---
