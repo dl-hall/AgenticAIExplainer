@@ -16,6 +16,11 @@ MODELS = {
 # sampler doesn't error on temperature ~= 0.
 GREEDY_THRESHOLD = 0.05
 
+# Confirmed model context facts. Carried in the context_building event payload
+# (not yet displayed; bucket 06's gauge will consume them).
+MAX_CONTEXT = 262144      # 256k via YaRN
+NATIVE_CONTEXT = 16384    # 16k native train length; quality best within this
+
 
 class ModelManager:
     def __init__(self):
@@ -79,15 +84,12 @@ class ModelManager:
             tokenized["attention_mask"] = tokenized["attention_mask"].to("cuda")
         return tokenized
 
-    def get_prompt_text(self, messages, tools=None):
-        """Return the raw tokenized prompt as a string, for display in the UI."""
-        kwargs = {"tokenize": False}
-        if tools:
-            kwargs["tools"] = tools
-        try:
-            return self.tokenizer.apply_chat_template(messages, **kwargs)
-        except Exception:
-            return "(prompt text unavailable with tools)"
+    def decode_prompt(self, input_ids):
+        """Decode the exact input_ids sent to the model back into text, for display.
+        Special tokens are preserved so markers like [INST] / [AVAILABLE_TOOLS]
+        appear as the model sees them."""
+        ids = input_ids[0].tolist()
+        return self.tokenizer.decode(ids, skip_special_tokens=False)
 
     def generate_streaming(self, tokenized, on_token=None, temperature=0.7):
         """Run generation in a background thread, yielding tokens via on_token callback.
@@ -134,8 +136,3 @@ class ModelManager:
     def _generate_thread(self, gen_kwargs):
         with torch.inference_mode():
             self.model.generate(**gen_kwargs)
-
-    def decode_token_count(self, text):
-        """Return the number of tokens in a text string."""
-        tokens = self.tokenizer.encode(text, add_special_tokens=False)
-        return len(tokens)

@@ -70,7 +70,7 @@
 
     // --- Context panel ---
 
-    function renderContext(messages, tools, promptText, reasoningAddendum) {
+    function renderContext(messages, tools, promptText, reasoningAddendum, count) {
         contextContent.innerHTML = "";
 
         if (promptText) {
@@ -129,8 +129,8 @@
             }
         }
 
-        const charCount = promptText ? promptText.length : 0;
-        tokenCount.textContent = `~${Math.round(charCount / 4)} tokens`;
+        const realCount = typeof count === "number" ? count : 0;
+        tokenCount.textContent = `${realCount.toLocaleString()} tokens`;
 
         contextContent.scrollTop = contextContent.scrollHeight;
     }
@@ -246,7 +246,7 @@
                 break;
 
             case "context_building":
-                renderContext(evt.messages, evt.tools, evt.prompt_text, evt.reasoning_addendum);
+                renderContext(evt.messages, evt.tools, evt.prompt_text, evt.reasoning_addendum, evt.token_count);
                 setLoopStep("step-observe");
                 addActivity(
                     `<div class="label" style="color:var(--role-system)">✨ Context Built</div>

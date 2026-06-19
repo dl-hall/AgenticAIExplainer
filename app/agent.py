@@ -4,7 +4,7 @@ import asyncio
 import string
 from dataclasses import dataclass, field
 
-from app.model_manager import ModelManager
+from app.model_manager import ModelManager, MAX_CONTEXT, NATIVE_CONTEXT
 from app.tools import TOOL_DEFINITIONS, execute_tool
 
 SYSTEM_PROMPT = """You are a helpful assistant. You have access to tools that let you perform calculations, read files, and list available files. Use these tools when needed to answer the user's questions accurately.
@@ -109,16 +109,24 @@ class Agent:
                 *self.messages,
             ]
 
+            # Tokenize once: the same input_ids feed both display (decoded back to
+            # text, counted for the badge) and generation below.
+            tokenized = self.model_manager.tokenize(full_messages, tools=tools or None)
+            input_ids = tokenized["input_ids"]
+            token_count = input_ids.shape[1]
+            prompt_text = self.model_manager.decode_prompt(input_ids)
+
             await emit(AgentEvent("context_building", {
                 "messages": _serialize_messages(display_messages),
                 "tools": tools,
-                "prompt_text": self.model_manager.get_prompt_text(full_messages, tools=tools or None),
+                "prompt_text": prompt_text,
+                "token_count": token_count,
+                "max_context": MAX_CONTEXT,        # carried for bucket 06; not displayed yet
+                "native_context": NATIVE_CONTEXT,
                 "reasoning_addendum": addendum,
             }))
 
             await emit(AgentEvent("llm_start", {}))
-
-            tokenized = self.model_manager.tokenize(full_messages, tools=tools or None)
 
             generated_text = ""
             loop = asyncio.get_event_loop()
