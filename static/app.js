@@ -11,6 +11,11 @@
     const btnReset = $("#btn-reset");
     const contextContent = $("#context-content");
     const activityLog = $("#activity-log");
+    const systemPromptEl = $("#system-prompt");
+    const btnApplyPrompt = $("#btn-apply-prompt");
+    const reasoningToggle = $("#reasoning-addendum-toggle");
+    const temperatureEl = $("#temperature");
+    const temperatureValueEl = $("#temperature-value");
     const tokenCount = $("#token-count");
     const loopCounter = $("#loop-counter");
     const statusIcon = $("#status-icon");
@@ -65,7 +70,7 @@
 
     // --- Context panel ---
 
-    function renderContext(messages, tools, promptText) {
+    function renderContext(messages, tools, promptText, reasoningAddendum) {
         contextContent.innerHTML = "";
 
         if (promptText) {
@@ -80,6 +85,13 @@
 
             if (role === "system") {
                 addContextBlock("System Prompt", contentText, "system");
+                if (reasoningAddendum) {
+                    addContextBlock(
+                        "Reasoning Instructions (auto-added)",
+                        reasoningAddendum,
+                        "thinking"
+                    );
+                }
                 if (!toolsRendered && tools && tools.length > 0) {
                     const toolText = JSON.stringify(tools, null, 2);
                     addContextBlock(
@@ -213,6 +225,11 @@
                 modelStatus.textContent = `${evt.model} ready`;
                 modelStatus.className = "status-badge ready";
                 setStatus("success", `Model '${evt.model}' loaded and ready.`);
+                if (typeof evt.temperature === "number") {
+                    temperatureEl.value = evt.temperature;
+                    temperatureValueEl.textContent = evt.temperature.toFixed(2);
+                }
+                reasoningToggle.checked = !!evt.reasoning_addendum_enabled;
                 updateButtons();
                 break;
 
@@ -229,7 +246,7 @@
                 break;
 
             case "context_building":
-                renderContext(evt.messages, evt.tools, evt.prompt_text);
+                renderContext(evt.messages, evt.tools, evt.prompt_text, evt.reasoning_addendum);
                 setLoopStep("step-observe");
                 addActivity(
                     `<div class="label" style="color:var(--role-system)">✨ Context Built</div>
@@ -388,6 +405,23 @@
 
     btnReset.addEventListener("click", () => {
         send({ action: "reset" });
+    });
+
+    // --- Generation settings ---
+
+    btnApplyPrompt.addEventListener("click", () => {
+        send({ action: "set_system_prompt", system_prompt: systemPromptEl.value });
+    });
+
+    temperatureEl.addEventListener("input", () => {
+        temperatureValueEl.textContent = parseFloat(temperatureEl.value).toFixed(2);
+    });
+    temperatureEl.addEventListener("change", () => {
+        send({ action: "set_temperature", temperature: parseFloat(temperatureEl.value) });
+    });
+
+    reasoningToggle.addEventListener("change", () => {
+        send({ action: "set_reasoning_addendum", enabled: reasoningToggle.checked });
     });
 
     // --- Init ---

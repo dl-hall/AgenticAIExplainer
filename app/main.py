@@ -49,7 +49,12 @@ async def websocket_endpoint(ws: WebSocket):
                         )
 
                     await asyncio.to_thread(model_manager.load_model, model_key, on_progress)
-                    await emit(AgentEvent("model_ready", {"model": model_key}))
+                    temp, addendum_on = agent.apply_model_defaults(model_key)
+                    await emit(AgentEvent("model_ready", {
+                        "model": model_key,
+                        "temperature": temp,
+                        "reasoning_addendum_enabled": addendum_on,
+                    }))
                 except Exception as e:
                     await emit(AgentEvent("error", {"text": str(e)}))
 
@@ -75,6 +80,24 @@ async def websocket_endpoint(ws: WebSocket):
                 await emit(AgentEvent("tools_updated", {
                     "tools_enabled": agent.tools_enabled,
                     "list_files_enabled": agent.list_files_enabled,
+                }))
+
+            elif action == "set_system_prompt":
+                agent.system_prompt = msg.get("system_prompt", "")
+                await emit(AgentEvent("system_prompt_updated", {
+                    "system_prompt": agent.system_prompt,
+                }))
+
+            elif action == "set_temperature":
+                agent.temperature = float(msg.get("temperature", agent.temperature))
+                await emit(AgentEvent("temperature_updated", {
+                    "temperature": agent.temperature,
+                }))
+
+            elif action == "set_reasoning_addendum":
+                agent.reasoning_addendum_enabled = bool(msg.get("enabled", False))
+                await emit(AgentEvent("reasoning_addendum_updated", {
+                    "enabled": agent.reasoning_addendum_enabled,
                 }))
 
     except WebSocketDisconnect:

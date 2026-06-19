@@ -12,6 +12,10 @@ MODELS = {
     "reasoning": "mistral-ai/ministral-3/Transformers/ministral-3-3b-reasoning-2512",
 }
 
+# At/below this temperature, switch to greedy decoding (do_sample=False) so the
+# sampler doesn't error on temperature ~= 0.
+GREEDY_THRESHOLD = 0.05
+
 
 class ModelManager:
     def __init__(self):
@@ -85,7 +89,7 @@ class ModelManager:
         except Exception:
             return "(prompt text unavailable with tools)"
 
-    def generate_streaming(self, tokenized, on_token=None):
+    def generate_streaming(self, tokenized, on_token=None, temperature=0.7):
         """Run generation in a background thread, yielding tokens via on_token callback.
         Returns the full generated text when complete."""
 
@@ -101,10 +105,15 @@ class ModelManager:
             **tokenized,
             "max_new_tokens": 4096,
             "use_cache": True,
-            "do_sample": True,
-            "temperature": 0.7,
             "streamer": streamer,
         }
+
+        if temperature is None or temperature < GREEDY_THRESHOLD:
+            # Greedy decoding; omit temperature so the sampler doesn't error.
+            gen_kwargs["do_sample"] = False
+        else:
+            gen_kwargs["do_sample"] = True
+            gen_kwargs["temperature"] = temperature
 
         thread = threading.Thread(
             target=self._generate_thread,

@@ -24,3 +24,7 @@ Thumbs.db
 
 # Environment
 .env
+
+# Temporary plans
+docs/task-plans/
+ToDo.md

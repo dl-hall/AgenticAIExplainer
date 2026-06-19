@@ -11,6 +11,19 @@ SYSTEM_PROMPT = """You are a helpful assistant. You have access to tools that le
 
 When you need information that might be in a file, first list the available files, then read the relevant one."""
 
+# Mistral's standard reasoning prompt. Appended to the system prompt (as a
+# distinct segment) when the reasoning addendum toggle is on. Its [THINK]/[/THINK]
+# markers align with `_split_thinking` so the thinking renders as its own block.
+REASONING_ADDENDUM = """# HOW YOU SHOULD THINK AND ANSWER
+
+First draft your thinking process (inner monologue) until you arrive at a response. Format your response using Markdown, and use LaTeX for any mathematical equations. Write both your thoughts and the response in the same language as the input.
+
+Your thinking process must follow the template below:[THINK]Your thoughts or/and draft, like working through an exercise on scratch paper. Be as casual and as long as you want until you are confident to generate the response to the user.[/THINK]Here, provide a self-contained response."""
+
+# Per-model default temperatures (Mistral recommendation). Reset to these on
+# model load/switch; user may override afterwards.
+DEFAULT_TEMPERATURES = {"instruct": 0.1, "reasoning": 0.7}
+
 MAX_ITERATIONS = 5
 
 _call_counter = 0
@@ -43,9 +56,22 @@ class Agent:
         self.messages = []
         self.tools_enabled = True
         self.list_files_enabled = True
+        self.system_prompt = SYSTEM_PROMPT
+        self.temperature = DEFAULT_TEMPERATURES["instruct"]
+        self.reasoning_addendum_enabled = False
 
     def reset(self):
+        # Only the conversation is cleared. Generation settings (system prompt,
+        # temperature, reasoning toggle) deliberately persist across resets.
         self.messages = []
+
+    def apply_model_defaults(self, model_key: str):
+        """Reset generation settings to the loaded model's defaults.
+        Returns (temperature, reasoning_addendum_enabled) so the caller can
+        emit them to the client."""
+        self.temperature = DEFAULT_TEMPERATURES.get(model_key, 0.7)
+        self.reasoning_addendum_enabled = (model_key == "reasoning")
+        return self.temperature, self.reasoning_addendum_enabled
 
     def get_active_tools(self):
         if not self.tools_enabled:
@@ -68,15 +94,26 @@ class Agent:
         for iteration in range(1, MAX_ITERATIONS + 1):
             await emit(AgentEvent("loop_iteration", {"iteration": iteration, "max": MAX_ITERATIONS}))
 
+            addendum = REASONING_ADDENDUM if self.reasoning_addendum_enabled else None
+            model_system_text = self.system_prompt + (f"\n\n{addendum}" if addendum else "")
+
+            # full_messages -> model input (system prompt + addendum combined).
             full_messages = [
-                {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
+                {"role": "system", "content": [{"type": "text", "text": model_system_text}]},
+                *self.messages,
+            ]
+            # display_messages -> context window (user's prompt only; the addendum
+            # is shown as its own block so the editable prompt is never duplicated).
+            display_messages = [
+                {"role": "system", "content": [{"type": "text", "text": self.system_prompt}]},
                 *self.messages,
             ]
 
             await emit(AgentEvent("context_building", {
-                "messages": _serialize_messages(full_messages),
+                "messages": _serialize_messages(display_messages),
                 "tools": tools,
                 "prompt_text": self.model_manager.get_prompt_text(full_messages, tools=tools or None),
+                "reasoning_addendum": addendum,
             }))
 
             await emit(AgentEvent("llm_start", {}))
@@ -95,7 +132,9 @@ class Agent:
 
                 def run_generation():
                     nonlocal generated_text
-                    generated_text = self.model_manager.generate_streaming(tokenized, on_token=on_token)
+                    generated_text = self.model_manager.generate_streaming(
+                        tokenized, on_token=on_token, temperature=self.temperature
+                    )
                     loop.call_soon_threadsafe(queue.put_nowait, None)
 
                 import threading
